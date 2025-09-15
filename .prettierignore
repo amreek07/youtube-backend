@@ -1,0 +1,10 @@
+
+
+# Ignore artifacts:
+/node_modules  
+/.vscode
+./dist  
+
+*.env
+.env
+.env.*
