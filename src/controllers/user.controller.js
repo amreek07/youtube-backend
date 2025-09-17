@@ -187,7 +187,6 @@ const logoutUser = asyncHandler(async (req, res) => {
 });
 
 const refresheAccessToken = asyncHandler(async (req, res) => {
-
   /**Access token is short lived(for 1 day, 1 week) and refresh token has longer life(for days, weeks or months), refresh token is used to generate the new access token. Actually this is the method where we with inttrrupting the user or with spoiling the user experience can verify the user at backend level.  */
   const incomingrefreshToken =
     req.cookies.refreshToken || req.body.refreshToken;
@@ -236,4 +235,33 @@ const refresheAccessToken = asyncHandler(async (req, res) => {
   }
 });
 
-export { registerUser, loginUser, logoutUser, refresheAccessToken };
+const changeCurrentPassword = asyncHandler(async (req, res) => {
+  const { oldPassword, newPassword } = req.body;
+  const user = await User.findById(req.user?._id);
+  const isPasswordCorrect = await user.isPasswordMatch(oldPassword);
+
+  if (!isPasswordCorrect) {
+    throw new ApiError(400, "Invalid Password");
+  }
+
+  user.password = newPassword;
+  await user.save({ validateBeforeSave: false });
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Password changed successfully"));
+});
+
+const getCurrentUser = asyncHandler(async (req, res) => {
+  return res
+    .status(200)
+    .json(new ApiResponse(200, req.user, "Current user fetched successfully"));
+});
+
+export {
+  registerUser,
+  loginUser,
+  logoutUser,
+  refresheAccessToken,
+  changeCurrentPassword,
+  getCurrentUser,
+};
