@@ -187,6 +187,8 @@ const logoutUser = asyncHandler(async (req, res) => {
 });
 
 const refresheAccessToken = asyncHandler(async (req, res) => {
+
+  /**Access token is short lived(for 1 day, 1 week) and refresh token has longer life(for days, weeks or months), refresh token is used to generate the new access token. Actually this is the method where we with inttrrupting the user or with spoiling the user experience can verify the user at backend level.  */
   const incomingrefreshToken =
     req.cookies.refreshToken || req.body.refreshToken;
 
