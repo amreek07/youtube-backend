@@ -3,6 +3,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { User } from "../models/user.model.js";
 import { uploadToCloudinary } from "../utils/cloudinary.js";
+import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
 
 const generateAccessAndRefreshTokens = async (userId) => {
@@ -135,7 +136,11 @@ const loginUser = asyncHandler(async (req, res) => {
     user._id
   );
 
-  const loggedInUser = await User.findById(user._id);
+  const loggedInUser = await User.findById(user._id).select("-password -refreshToken");
+
+  if (!loggedInUser) {
+    throw new ApiError(500, "Something went wrong while logging in the user.");
+  }
 
   const options = {
     //these options makes the cookies editable throw server side only not from frontend.
@@ -165,8 +170,8 @@ const logoutUser = asyncHandler(async (req, res) => {
   await User.findByIdAndUpdate(
     req.user._id,
     {
-      $set: {
-        refreshToken: undefined,
+      $unset: {
+        refreshToken: 1, //unset is used to delete the field from the document
       },
     },
     {
@@ -215,6 +220,11 @@ const refresheAccessToken = asyncHandler(async (req, res) => {
     const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
       user._id
     );
+
+    const options = {
+      httpOnly: true,
+      secure: true
+    }
 
     return res
       .status(200)
