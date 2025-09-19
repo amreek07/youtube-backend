@@ -38,7 +38,6 @@ const registerUser = asyncHandler(async (req, res) => {
   //send success response
 
   const { username, email, fullName, password } = req.body;
-  const { avatar, coverImage } = req.files;
 
   if (
     [username, email, fullName, password].some(
@@ -72,8 +71,8 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Avatar file is required");
   }
 
-  const avatarInternal = await uploadToCloudinary(avatarLocalPath);
-  const coverImageInternal = await uploadToCloudinary(coverImageLocalPath);
+  const avatar = await uploadToCloudinary(avatarLocalPath);
+  const coverImage = await uploadToCloudinary(coverImageLocalPath);
 
   if (!avatar) {
     throw new ApiError(400, "Avatar file is required");
@@ -81,8 +80,8 @@ const registerUser = asyncHandler(async (req, res) => {
 
   const user = await User.create({
     username: username.toLowerCase(),
-    avatar: avatarInternal.url,
-    coverImage: coverImageInternal?.url || "",
+    avatar: avatar.url,
+    coverImage: coverImage?.url || "",
     email,
     password,
     fullName,
