@@ -6,16 +6,26 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { uploadToCloudinary } from "../utils/cloudinary.js";
 
+//only this function is pending
 const getAllVideos = asyncHandler(async (req, res) => {
   /*page will be passed like 1/2/3 
     limit for the number of documents required per page
     sortBy - for sorting it as createdBy
     */
 
-  const { page = 1, limit = 10, query, sortBy, sortType = "createdAt", userId } = req.query;
+  const {
+    page = 1,
+    limit = 10,
+    query,
+    sortBy,
+    sortType = "createdAt",
+    userId,
+  } = req.query;
   //TODO: get all videos based on query, sort, pagination
 
-  const videos = await Video.find({owner: req.user?._id}).sort(sortBy).limit(limit);
+  const videos = await Video.find({ owner: req.user?._id })
+    .sort(sortBy)
+    .limit(limit);
 });
 
 //publish a video is done
@@ -69,11 +79,68 @@ const getVideoById = asyncHandler(async (req, res) => {
   const { videoId } = req.params;
   //TODO: get video by id
 
-  if (!videoId || !mongoose.isValidObjectId(videoId)) {
+  if (!videoId || !isValidObjectId(videoId)) {
     throw new ApiError(400, "Video id is required");
   }
 
-  const video = await Video.findById(videoId);
+  const video = await Video.aggregate([
+    {
+      $match: {
+        _id: new mongoose.Types.ObjectId(videoId),
+      },
+    },
+    {
+      $lookup: {
+        from: "likes",
+        localField: "_id",
+        foreignField: "video",
+        as: "likes",
+      },
+    },
+    {
+      $addFields: {
+        likes: { $size: "$likes" }, //if the lookup variable and the addFields varibales are same then this will overwrite
+      },
+    },
+    {
+      $lookup: {
+        from: "comments",
+        localField: "_id",
+        foreignField: "video",
+        as: "comments",
+        pipeline: [
+          {
+            $lookup: {
+              from: "users",
+              localField: "owner",
+              foreignField: "_id",
+              as: "owner",
+              pipeline: [
+                {
+                  $project: {
+                    username: 1,
+                    avatar: 1,
+                    fullName: 1,
+                  },
+                },
+              ],
+            },
+          },
+          {
+            $unwind: {
+              path: "$owner",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+        ],
+      },
+    },
+    {
+      $addFields: {
+        commentsCount: { $size: "$comments" },
+      },
+    },
+  ]);
 
   if (!video) {
     throw new ApiError(404, "Video not found");
@@ -81,7 +148,7 @@ const getVideoById = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(new ApiResponse(200, video, "Video fetched successfully"));
+    .json(new ApiResponse(200, video[0], "Video fetched successfully"));
 });
 
 const updateVideo = asyncHandler(async (req, res) => {
