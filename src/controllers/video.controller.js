@@ -23,9 +23,54 @@ const getAllVideos = asyncHandler(async (req, res) => {
   } = req.query;
   //TODO: get all videos based on query, sort, pagination
 
-  const videos = await Video.find({ owner: req.user?._id })
-    .sort(sortBy)
-    .limit(limit);
+  const pageNum = parseInt(page);
+  const limitNum = parseInt(limit);
+
+  // Validate userId if present
+  if (userId && !isValidObjectId(userId)) {
+    throw new ApiError(400, "Invalid userId provided");
+  }
+
+  // Build MongoDB filter
+  let filter = {};
+  if (query) {
+    filter.$or = [
+      { title: { $regex: query, $options: "i" } },
+      { description: { $regex: query, $options: "i" } },
+    ];
+  }
+  if (userId) {
+    filter.owner = new mongoose.Types.ObjectId(userId);
+  }
+
+  // Sort order
+  const sortOrder = sortType === "asc" ? 1 : -1;
+
+  // Fetch videos
+  const videos = await Video.find(filter)
+    .populate("owner", "username avatar fullName") // include owner info
+    .sort({ [sortBy]: sortOrder })
+    .skip((pageNum - 1) * limitNum)
+    .limit(limitNum);
+
+  // Total count for pagination
+  const totalVideos = await Video.countDocuments(filter);
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        videos,
+        pagination: {
+          total: totalVideos,
+          page: pageNum,
+          pages: Math.ceil(totalVideos / limitNum),
+        },
+      },
+      "Videos fetched successfully"
+    )
+  );
+
 });
 
 //publish a video is done
@@ -191,6 +236,12 @@ const deleteVideo = asyncHandler(async (req, res) => {
 
   if (!videoId || !mongoose.isValidObjectId(videoId)) {
     throw new ApiError(400, "Video id is required");
+  }
+
+  const video = await Video.findById(tweetId);
+
+  if (video.owner.toString() !== req.user?._id.toString()) {
+    throw new ApiError(403, "You are not authorized to delete this tweet!");
   }
 
   await Video.findByIdAndDelete(videoId);

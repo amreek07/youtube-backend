@@ -190,6 +190,7 @@ const logoutUser = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, {}, "User logged out"));
 });
 
+//refresh the tokens when access token get expired
 const refresheAccessToken = asyncHandler(async (req, res) => {
   /**Access token is short lived(for 1 day, 1 week) and refresh token has longer life(for days, weeks or months), refresh token is used to generate the new access token. Actually this is the method where we with inttrrupting the user or with spoiling the user experience can verify the user at backend level.  */
   const incomingrefreshToken =
@@ -244,6 +245,7 @@ const refresheAccessToken = asyncHandler(async (req, res) => {
   }
 });
 
+//change current password using the old password
 const changeCurrentPassword = asyncHandler(async (req, res) => {
   const { oldPassword, newPassword } = req.body;
   const user = await User.findById(req.user?._id);
@@ -260,12 +262,14 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, {}, "Password changed successfully"));
 });
 
+//get the logged in user
 const getCurrentUser = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .json(new ApiResponse(200, req.user, "Current user fetched successfully"));
 });
 
+// update profile details of the user
 const updateAccountDetails = asyncHandler(async (req, res) => {
   const { fullName, email } = req.body;
 
@@ -289,6 +293,7 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, user, "User details updated successfully"));
 });
 
+//update he avatar
 const updateAvatar = asyncHandler(async (req, res) => {
   const avatarLocalPath = req.file?.path;
 
@@ -315,6 +320,7 @@ const updateAvatar = asyncHandler(async (req, res) => {
   return res.status(200).json(200, user, "Avatar updated successfully");
 });
 
+//update the conver image or the banner image
 const updateCoverImage = asyncHandler(async (req, res) => {
   const coverImageLocalPath = req.file?.path;
 
@@ -339,6 +345,7 @@ const updateCoverImage = asyncHandler(async (req, res) => {
 
   return res.status(200).json(200, user, "Cover image updated successfully");
 });
+
 
 const getUserChannelProfile = asyncHandler(async (req, res) => {
   const { username } = req.params;
