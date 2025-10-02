@@ -1,4 +1,4 @@
-import mongoose, { isValidObjectId } from "mongoose";
+import mongoose, { isValidObjectId, mongo } from "mongoose";
 import { User } from "../models/user.model.js";
 import { Subscription } from "../models/subscription.model.js";
 import { ApiError } from "../utils/ApiError.js";
@@ -9,7 +9,7 @@ const toggleSubscription = asyncHandler(async (req, res) => {
   const { channelId } = req.params;
   // TODO: toggle subscription
 
-  if (!channelId || isValidObjectId(channelId)) {
+  if (!channelId || !isValidObjectId(channelId)) {
     throw new ApiError(400, "Valid channelId is required");
   }
 
@@ -43,16 +43,49 @@ const getUserChannelSubscribers = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Valid channelId is required");
   }
 
-  const subscribers = await Subscription.find({ channel: channelId })
-    .populate("subscriber", "username email avatar")
-    .sort({ createdAt: -1 });
+  const subscribers = await Subscription.aggregate([
+    {
+      $match: {
+        channel: channelId
+      }
+    },
+    {
+      $lookup: {
+        from: "users",
+        localField:"subscriber",
+        foreignField:"_id",
+        as:"subscribers",
+        pipeline:[
+          {
+            $project: {
+              fullName: 1,
+              email: 1,
+              username: 1,
+              avatar: 1
+            }
+          }
+        ]
+      }
+    },
+    {
+      $addFields: {
+        subscriberCount: {
+          $size: "$subscriber"
+        }
+      }
+    }
+  ]);
+
+  // const subscribers = await Subscription.find({ channel: channelId })
+  //   .populate("subscriber", "username email avatar")
+  //   .sort({ createdAt: -1 });
 
   return res
     .status(200)
     .json(
       new ApiResponse(
         200,
-        { subscribersCount: subscribers.length, subscribers },
+         subscribers,
         "Subscribers fetched successfully."
       )
     );
@@ -61,25 +94,66 @@ const getUserChannelSubscribers = asyncHandler(async (req, res) => {
 // controller to return channel list to which user has subscribed
 const getSubscribedChannels = asyncHandler(async (req, res) => {
   const { subscriberId } = req.params;
+  // console.log(subscriberId);
 
    if (!subscriberId || !isValidObjectId(subscriberId)) {
     throw new ApiError(400, "Valid channelId is required");
   }
 
-  const subscribedChannels = await Subscription.find({ subscriber: channelId })
-    .populate("channels", "username email avatar")
-    .sort({ createdAt: -1 });
+  const subscribedChannels = await Subscription.aggregate([
+    {
+      $match: {
+        subscriber: new mongoose.Types.ObjectId(subscriberId)
+      }
+    },
+    {
+      $lookup: {
+        from: "users",
+        localField:"channel",
+        foreignField:"_id",
+        as:"subscribedChannels",
+        pipeline:[
+          {
+            $project: {
+              fullName: 1,
+              email: 1,
+              username: 1,
+              avatar: 1
+            }
+          }
+        ]
+      }
+    },
+    {
+      $addFields: {
+        subscribedChannelsCount: {
+          $size: "$subscribedChannels"
+        }
+      }
+    },
+    {
+      $unwind: "$subscribedChannels"
+
+    }
+  ]);
+
+  // console.log(subscribedChannels);
 
   return res
     .status(200)
     .json(
       new ApiResponse(
         200,
-        { subscribedChannelsCount: subscribedChannels.length, subscribedChannels },
+         subscribedChannels,
         "Subscribers fetched successfully."
       )
     );
 
 });
+
+
+  // const subscribedChannels = await Subscription.find({ subscriber: channelId })
+  //   .populate("channels", "username email avatar")
+  //   .sort({ createdAt: -1 });
 
 export { toggleSubscription, getUserChannelSubscribers, getSubscribedChannels };

@@ -128,6 +128,13 @@ const getVideoById = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Video id is required");
   }
 
+  //to update the views count first.
+  await Video.findByIdAndUpdate(
+    videoId,
+    { $inc: { views: 1 } },
+    { new: true }
+  );
+
   const video = await Video.aggregate([
     {
       $match: {
@@ -187,7 +194,7 @@ const getVideoById = asyncHandler(async (req, res) => {
     },
   ]);
 
-  if (!video) {
+  if (!video || video.length === 0) {
     throw new ApiError(404, "Video not found");
   }
 
