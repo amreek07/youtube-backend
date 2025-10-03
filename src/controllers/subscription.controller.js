@@ -46,7 +46,7 @@ const getUserChannelSubscribers = asyncHandler(async (req, res) => {
   const subscribers = await Subscription.aggregate([
     {
       $match: {
-        channel: channelId
+        channel: new mongoose.Types.ObjectId(channelId)
       }
     },
     {
@@ -70,7 +70,7 @@ const getUserChannelSubscribers = asyncHandler(async (req, res) => {
     {
       $addFields: {
         subscriberCount: {
-          $size: "$subscriber"
+          $size: "$subscribers"
         }
       }
     }
@@ -91,6 +91,7 @@ const getUserChannelSubscribers = asyncHandler(async (req, res) => {
     );
 });
 
+//done
 // controller to return channel list to which user has subscribed
 const getSubscribedChannels = asyncHandler(async (req, res) => {
   const { subscriberId } = req.params;
@@ -133,11 +134,10 @@ const getSubscribedChannels = asyncHandler(async (req, res) => {
     },
     {
       $unwind: "$subscribedChannels"
-
     }
   ]);
 
-  // console.log(subscribedChannels);
+  console.log(subscribedChannels);
 
   return res
     .status(200)
@@ -145,7 +145,7 @@ const getSubscribedChannels = asyncHandler(async (req, res) => {
       new ApiResponse(
         200,
          subscribedChannels,
-        "Subscribers fetched successfully."
+        "Subscribed channls fetched successfully."
       )
     );
 
